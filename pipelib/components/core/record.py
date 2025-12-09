@@ -20,6 +20,9 @@ class Record:
         self.symbol_ratio: float|None = None
         self.tokens: list[str]|None = None
 
+        self.anonymized = False
+        self.html_extracted = False
+
         self.omit: bool = False
         self.omit_reason: str|None = None
 
@@ -39,6 +42,7 @@ class Record:
         d = {
             'id': self.id,
             'reason': self.omit_reason,
+            'lang': self.lang,
             'original': self.original,
         }
         handle.write(json.dumps(d))

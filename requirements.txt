@@ -3,3 +3,4 @@ fast_langdetect==1.0.0
 numpy==2.3.5
 presidio_analyzer==2.2.360
 presidio_anonymizer==2.2.360
+matplotlib~=3.10.7

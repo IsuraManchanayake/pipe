@@ -66,6 +66,7 @@ class HTMLExtractorModifier(Modifier):
             # Only update if we got meaningful content
             if clean_text and len(clean_text.strip()) > 50:
                 record.cleaned = clean_text
+                record.html_extracted = True
         except Exception as e:
             # If parsing fails, leave the record unchanged
             # Could log this: print(f"HTML parsing failed: {e}")

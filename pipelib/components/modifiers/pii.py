@@ -44,6 +44,7 @@ class PIIModifier(Modifier):
                 analyzer_results=analyzer_results,
             )
             record.cleaned = anon_result.text
+            record.anonymized = True
 
     @staticmethod
     def neutralize_pronouns(record: Record) -> None:

@@ -40,8 +40,8 @@ class Pipeline:
                 time_left_seconds = (elapsed / line_no) * (self.config.input_limit - line_no)
                 time_left_minutes = int(time_left_seconds / 60) % 60
                 time_left_hours = int(time_left_seconds / 3600)
-                print(f'[progress] Time left: {time_left_hours} hours {time_left_minutes} minutes')
                 print(f'[progress] {line_no} rows seen')
+                print(f'[progress] Time left: {time_left_hours} hours {time_left_minutes} minutes')
                 if self.config.debug_info:
                     for step_idx, step in enumerate(self.steps):
                         name = step.__class__.__name__
@@ -50,6 +50,7 @@ class Pipeline:
                         omit_percentage = (100.0 * omits) / calls if calls else 0
                         print(f'[debug] [insights] {name}: rate={1/avg_time:.4f} Rec/s, {omit_percentage=:.2f}%')
                     print(f'[debug] [insights] {self.omit_reasons=}')
+                print('', end='', flush=True)
         return records
 
     def _process_parallel(self, records: Iterable[Record]) -> Iterable[Record]:
