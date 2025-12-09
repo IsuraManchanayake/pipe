@@ -26,6 +26,6 @@ class ToxicityFilter(Filter):
         self.detoxify_model = Detoxify('original-small')
 
     def _filter(self, record: Record) -> FilterResult:
-        tox_score = self.detoxify_model.predict([record.cleaned])['toxicity'][0]
+        tox_score = self.detoxify_model.predict(record.cleaned)['toxicity']
         return FilterResult.omit('toxic_content') \
             if tox_score > PipelineConfig.toxicity_threshold else FilterResult.keep()
