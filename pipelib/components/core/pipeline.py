@@ -1,4 +1,5 @@
 import time
+import threading
 from collections import Counter
 from typing import Iterable, Callable
 
@@ -19,25 +20,27 @@ class Pipeline:
         self.omit_reasons: Counter[str] = Counter()
         if self.config.debug_info:
             self.step_call_insights: NDArray[tuple[float, int, int]] = np.array([])  # tuples of (total time, number of calls, omits)
+            self._insights_lock = threading.Lock()
 
     def process(self, records: Iterable[Record]) -> Iterable[Record]:
         if self.config.debug_info:
             self.step_call_insights = np.array([(0.0, 0, 0) for _ in self.steps])
-        for line_no, record in enumerate(records, 1):
-            for step_idx, step in enumerate(self.steps):
-                if self.config.debug_info:
-                    record = self.call_with_insights(step_idx, step.process, record)
-                else:
-                    record = step.process(record)
-                # No need to add one more branch for checking isinstance(step, Filter) in a critical section.
-                if record.omit:
-                    self.omit_callback(record)
-                    self.collect_omit_insights(record)
-                    break
+        # Run records in parallel if configured, otherwise fall back to serial processing.
+        start = time.time()
+        processed_records = self._process_parallel(records) if self.config.workers > 1 else map(self._process_record, records)
+        for line_no, record in enumerate(processed_records, 1):
+            if record.omit:
+                self.omit_callback(record)
+                self.collect_omit_insights(record)
             else:
                 self.record_write_callback(record)
 
             if line_no % 100 == 0:
+                elapsed = time.time() - start
+                time_left_seconds = (elapsed / line_no) * (self.config.input_limit - line_no)
+                time_left_minutes = int(time_left_seconds / 60) % 60
+                time_left_hours = int(time_left_seconds / 3600)
+                print(f'[progress] Time left: {time_left_hours} hours {time_left_minutes} minutes')
                 print(f'[progress] {line_no} rows seen')
                 if self.config.debug_info:
                     for step_idx, step in enumerate(self.steps):
@@ -49,6 +52,23 @@ class Pipeline:
                     print(f'[debug] [insights] {self.omit_reasons=}')
         return records
 
+    def _process_parallel(self, records: Iterable[Record]) -> Iterable[Record]:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=self.config.workers) as executor:
+            for record in executor.map(self._process_record, records, chunksize=64):
+                yield record
+
+    def _process_record(self, record: Record) -> Record:
+        for step_idx, step in enumerate(self.steps):
+            if self.config.debug_info:
+                record = self.call_with_insights(step_idx, step.process, record)
+            else:
+                record = step.process(record)
+            if record.omit:
+                break
+        return record
+
     def call_with_insights(self, step_idx, func, *args, **kwargs):
         t = time.time()
         res: Record = func(*args, **kwargs)
@@ -57,7 +77,12 @@ class Pipeline:
         omits = self.step_call_insights[step_idx][2]
         if res.omit:
             omits += 1
-        self.step_call_insights[step_idx] = (elapsed, n_calls, omits)
+        # Protect concurrent writers when running with worker threads.
+        if self.config.workers > 1:
+            with self._insights_lock:
+                self.step_call_insights[step_idx] = (elapsed, n_calls, omits)
+        else:
+            self.step_call_insights[step_idx] = (elapsed, n_calls, omits)
         return res
 
     def collect_omit_insights(self, record: Record) -> None:

@@ -47,9 +47,9 @@ class PIIModifier(Modifier):
 
     @staticmethod
     def neutralize_pronouns(record: Record) -> None:
-        def repl(m):
-            w = m.group(0)
-            lower = w.lower()
-            return PIIModifier.PRONOUN_MAP.get(lower, w)
+        def repl(match: re.Match[str]) -> str:
+            word = match.group(0)
+            lower = word.lower()
+            return PIIModifier.PRONOUN_MAP.get(lower, word)
 
         record.cleaned = PIIModifier.PRONOUN_RE.sub(repl, record.cleaned)

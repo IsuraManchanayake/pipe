@@ -10,12 +10,22 @@ class DedupFilter(Filter):
     def __init__(self, config: PipelineConfig):
         super().__init__(config)
         self.dedup_hashes: set[str] = set()
+        self._lock = None
+        if config.workers > 1:
+            import threading
+            self._lock = threading.Lock()
 
     def _filter(self, record: Record) -> FilterResult:
         fingerprint = hash_fingerprint(record.cleaned)
-        if fingerprint in self.dedup_hashes:
-            return FilterResult.omit('duplicate')
-        self.dedup_hashes.add(fingerprint)
+        if self._lock:
+            with self._lock:
+                if fingerprint in self.dedup_hashes:
+                    return FilterResult.omit('duplicate')
+                self.dedup_hashes.add(fingerprint)
+        else:
+            if fingerprint in self.dedup_hashes:
+                return FilterResult.omit('duplicate')
+            self.dedup_hashes.add(fingerprint)
         return FilterResult.keep()
 
 

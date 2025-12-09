@@ -13,9 +13,10 @@ class ToxicityBatchFilter(BatchFilter):
         self.detoxify_model = Detoxify('original-small')
 
     def _batch_filter(self, records: Iterable[Record]) -> Iterable[FilterResult]:
-        tox_scores =  self.detoxify_model.predict([record.cleaned for record in records])['toxicity']
+        record_list = list(records)
+        tox_scores = self.detoxify_model.predict([record.cleaned for record in record_list])['toxicity']
         return [
-            FilterResult.omit('toxic_content') if tox > PipelineConfig.toxicity_threshold else FilterResult.keep()
+            FilterResult.omit('toxic_content') if tox > self.config.toxicity_threshold else FilterResult.keep()
             for tox in tox_scores
         ]
 
@@ -28,4 +29,4 @@ class ToxicityFilter(Filter):
     def _filter(self, record: Record) -> FilterResult:
         tox_score = self.detoxify_model.predict(record.cleaned)['toxicity']
         return FilterResult.omit('toxic_content') \
-            if tox_score > PipelineConfig.toxicity_threshold else FilterResult.keep()
+            if tox_score > self.config.toxicity_threshold else FilterResult.keep()

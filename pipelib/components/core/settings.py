@@ -1,4 +1,6 @@
+from pathlib import Path
 from dataclasses import dataclass
+
 
 @dataclass(frozen=True)
 class PipelineConfigDefaults:
@@ -12,13 +14,16 @@ class PipelineConfigDefaults:
     REQUIRE_ENGLISH = True
     TOXICITY_THRESHOLD = 0.7
     TOXICITY_BATCH_SIZE = 1000
+    WORKERS = 6
 
 
 @dataclass
 class PipelineConfig:
-    input_path: str
-    output_dir: str
+    input_path: Path
+    output_dir: Path
     debug_info: bool = False
+    input_limit: int = 0
+    workers: int = PipelineConfigDefaults.WORKERS
     shard_size: int = PipelineConfigDefaults.SHARD_SIZE
     min_char_len: int = PipelineConfigDefaults.MIN_CHAR_LEN
     min_token_len: int = PipelineConfigDefaults.MIN_TOKEN_LEN

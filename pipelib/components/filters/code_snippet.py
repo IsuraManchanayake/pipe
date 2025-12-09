@@ -1,9 +1,6 @@
 import re
 import unittest
 
-import nltk
-
-nltk.download('stopwords')
 
 from pipelib.components.core import Filter, FilterResult
 from pipelib.components.core.record import Record
