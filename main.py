@@ -95,8 +95,8 @@ def process_pipeline(pipeline: Pipeline, config: PipelineConfig) -> None:
     def save_record(record: Record) -> None:
         nonlocal records_written, shard_written, shard_index, shard_handle
 
-        record.write_jsonl(cleaned_handle)
-        record.write_jsonl(shard_handle)
+        record.write_successful_jsonl(cleaned_handle)
+        record.write_successful_jsonl(shard_handle)
 
         records_written += 1
         shard_written += 1
@@ -108,12 +108,7 @@ def process_pipeline(pipeline: Pipeline, config: PipelineConfig) -> None:
 
     def on_omit(record: Record) -> None:
         nonlocal omit_handle
-        d = {
-            'id': record.id,
-            'reason': record.omit_reason,
-            'text': record.original,
-        }
-        omit_handle.write(json.dumps(d) + '\n')
+        record.write_failed_jsonl(omit_handle)
 
     pipeline.register_record_write_callback(save_record)
     pipeline.register_omit_callback(on_omit)

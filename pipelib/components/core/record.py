@@ -27,11 +27,19 @@ class Record:
         return {
             'id': self.id,
             'cleaned': self.cleaned,
-            'lang': self.lang,
-            'original': self.original,
+            # 'original': self.original,
         }
 
-    def write_jsonl(self, handle):
+    def write_successful_jsonl(self, handle):
         d = self.to_dict()
+        handle.write(json.dumps(d))
+        handle.write('\n')
+
+    def write_failed_jsonl(self, handle):
+        d = {
+            'id': self.id,
+            'reason': self.omit_reason,
+            'original': self.original,
+        }
         handle.write(json.dumps(d))
         handle.write('\n')
