@@ -14,8 +14,8 @@ class DedupFilter(Filter):
     def _filter(self, record: Record) -> FilterResult:
         fingerprint = hash_fingerprint(record.cleaned)
         if fingerprint in self.dedup_hashes:
-            self.dedup_hashes.add(fingerprint)
             return FilterResult.omit('duplicate')
+        self.dedup_hashes.add(fingerprint)
         return FilterResult.keep()
 
 
