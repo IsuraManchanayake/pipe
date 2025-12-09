@@ -43,15 +43,15 @@ def parse_args() -> PipelineConfig:
 
 def setup_pipeline(config: PipelineConfig) -> Pipeline:
     pipeline = Pipeline(config)
-    pipeline.register_step(NormalizeModifier(config))
-    pipeline.register_step(AttributeEvaluationStep(config))
-    pipeline.register_step(PreliminaryFilter(config))
-    pipeline.register_step(HTMLExtractorModifier(config))
-    pipeline.register_step(CodeSnippetFilter(config))
-    pipeline.register_step(DedupFilter(config))
-    pipeline.register_step(LanguageFilter(config))
-    pipeline.register_step(ToxicityFilter(config))
-    pipeline.register_step(PIIModifier(config))
+    pipeline.register_step(NormalizeModifier)
+    pipeline.register_step(AttributeEvaluationStep)
+    pipeline.register_step(PreliminaryFilter)
+    pipeline.register_step(HTMLExtractorModifier)
+    pipeline.register_step(CodeSnippetFilter)
+    pipeline.register_step(DedupFilter)
+    pipeline.register_step(LanguageFilter)
+    pipeline.register_step(ToxicityFilter)
+    pipeline.register_step(PIIModifier)
     return pipeline
 
 

@@ -45,7 +45,7 @@ class Pipeline:
                         elapsed, calls, omits = self.step_call_insights[step_idx]
                         avg_time = elapsed / calls if calls else 0
                         omit_percentage = (100.0 * omits) / calls if calls else 0
-                        print(f'[debug] [insights] {name}: rate={1/avg_time:.4f}Rec/s, {omit_percentage=:.2f}%')
+                        print(f'[debug] [insights] {name}: rate={1/avg_time:.4f} Rec/s, {omit_percentage=:.2f}%')
                     print(f'[debug] [insights] {self.omit_reasons=}')
         return records
 
@@ -64,8 +64,11 @@ class Pipeline:
         self.omit_reasons[record.omit_reason] += 1
         return None
 
-    def register_step(self, step: Step) -> None:
+    def register_step(self, GenericStep: type[Step]) -> None:
         # print(step.__class__.__name__)
+        print(f'Initializing {GenericStep.__name__}...', end=' ')
+        step = GenericStep(self.config)
+        print(f'Done')
         self.steps.append(step)
 
     def register_record_write_callback(self, on_write: Callable[[Record], None]) -> None:

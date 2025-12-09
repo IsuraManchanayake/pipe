@@ -14,23 +14,25 @@ class AttributeEvaluationStep(AttributeModifier):
         record.tokens = tokenize(record.cleaned)
         record.char_count = len(record.cleaned)
         record.token_count = len(record.tokens)
-        record.ascii_ratio = compute_ascii_ratio(record.cleaned)
-        record.symbol_ratio = compute_symbol_ratio(record.cleaned)
+
+        ascii_count, symbol_count = compute_char_counts(record.cleaned)
+        record.ascii_ratio = ascii_count / record.char_count if record.char_count else 0.0
+        record.symbol_ratio = symbol_count / record.char_count if record.char_count else 0.0
+
+
+TOKEN_RE = re.compile(r"[A-Za-z']+")
 
 
 def tokenize(text) -> List[str]:
-    return re.findall(r"[A-Za-z']+", text.lower())
+    return TOKEN_RE.findall(text.lower())
 
 
-def compute_ascii_ratio(text: str) -> float:
-    if not text:
-        return 0.0
-    ascii_chars = sum(1 for c in text if ord(c) < 128)
-    return ascii_chars / len(text)
-
-
-def compute_symbol_ratio(text: str) -> float:
-    if not text:
-        return 0.0
-    symbols = sum(1 for c in text if not c.isalnum() and not c.isspace())
-    return symbols / len(text)
+def compute_char_counts(text: str) -> tuple[int, int]:
+    ascii_count = 0
+    symbol_count = 0
+    for c in text:
+        if ord(c) < 128:
+            ascii_count += 1
+        if not c.isalnum() and not c.isspace():
+            symbol_count += 1
+    return ascii_count, symbol_count
