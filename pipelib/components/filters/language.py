@@ -1,3 +1,7 @@
+import logging
+
+logging.getLogger('fast_langdetect.infer').setLevel(logging.ERROR)
+
 from fast_langdetect import LangDetectConfig, LangDetector
 
 from pipelib.components.core import Filter, FilterResult
@@ -18,3 +22,12 @@ class LanguageFilter(Filter):
         if record.lang != 'en':
             return FilterResult.omit('non_english')
         return FilterResult.keep()
+
+
+# Attempt downloading from a single thread and cold start
+_lang_detect_config = LangDetectConfig(model='auto')
+_lang_detect_model = LangDetector(_lang_detect_config)
+_lang = _lang_detect_model.detect('hello', k=1)[0]['lang']
+del _lang
+del _lang_detect_model
+del _lang_detect_config

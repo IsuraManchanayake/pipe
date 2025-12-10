@@ -18,7 +18,7 @@ class PreliminaryFilter(Filter):
             return FilterResult.omit('non_ascii_heavy')
         if record.symbol_ratio > self.config.max_symbol_ratio:
             return FilterResult.omit('symbol_heavy')
-        # has_long_repeat = bool(re.search(r"(.)\1{9,}", record.cleaned))
-        # if has_long_repeat:
-        #     return FilterResult.omit('long_repeat')
+        has_long_repeat = bool(re.search(r'([a-zA-Z])\1{9,}' , record.cleaned))
+        if has_long_repeat:
+            return FilterResult.omit('long_repeat')
         return FilterResult.keep()

@@ -30,3 +30,10 @@ class ToxicityFilter(Filter):
         tox_score = self.detoxify_model.predict(record.cleaned)['toxicity']
         return FilterResult.omit('toxic_content') \
             if tox_score > self.config.toxicity_threshold else FilterResult.keep()
+
+
+# Attempt downloading from a single thread cold start
+_detoxify_model = Detoxify('original-small')
+_tox_score = _detoxify_model.predict('hello')['toxicity']
+del _tox_score
+del _detoxify_model

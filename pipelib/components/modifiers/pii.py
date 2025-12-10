@@ -1,4 +1,9 @@
 import re
+import logging
+
+logging.getLogger('presidio-analyzer').setLevel(logging.ERROR)
+logging.getLogger('presidio-anonymizer').setLevel(logging.ERROR)
+
 
 from presidio_analyzer import AnalyzerEngine
 from presidio_anonymizer import AnonymizerEngine
@@ -54,3 +59,21 @@ class PIIModifier(Modifier):
             return PIIModifier.PRONOUN_MAP.get(lower, word)
 
         record.cleaned = PIIModifier.PRONOUN_RE.sub(repl, record.cleaned)
+
+
+# Attempt downloading from a single thread code start
+_temp_analyzer_engine = AnalyzerEngine()
+_temp_anonymizer = AnonymizerEngine()
+_temp_analyzer_results = _temp_analyzer_engine.analyze(
+    text='hello',
+    language='en',
+    entities=['PERSON', 'EMAIL_ADDRESS', 'LOCATION', 'PHONE_NUMBER', 'IP_ADDRESS'],
+)
+_temp_anon_result = _temp_anonymizer.anonymize(
+    text='hello',
+    analyzer_results=_temp_analyzer_results,
+)
+del _temp_anon_result
+del _temp_analyzer_results
+del _temp_analyzer_engine
+del _temp_anonymizer

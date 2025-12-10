@@ -14,7 +14,7 @@ class PipelineConfigDefaults:
     REQUIRE_ENGLISH = True
     TOXICITY_THRESHOLD = 0.7
     TOXICITY_BATCH_SIZE = 1000
-    WORKERS = 4
+    WORKERS = 6
 
 
 @dataclass

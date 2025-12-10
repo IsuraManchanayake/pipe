@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 from pathlib import Path
 from typing import Iterable, Tuple
 from itertools import islice
@@ -120,14 +121,26 @@ def process_pipeline(pipeline: Pipeline, config: PipelineConfig) -> None:
     cleaned_handle.close()
     omit_handle.close()
 
+    insight_path = config.output_dir / 'pipeline_insights.json'
+    with open(insight_path, 'w', encoding='utf-8') as insight_handle:
+        insights_dict = pipeline.generate_insights()
+        json.dump(insights_dict, insight_handle, indent=4)
+
 
 def main():
     config = parse_args()
 
-    pipeline = setup_pipeline(config)
-    process_pipeline(pipeline, config)
+    logging.basicConfig(
+        level=logging.DEBUG if config.debug_info else logging.INFO,
+        format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+    )
+    logger = logging.getLogger(__name__)
 
-    print(f"Running pipeline on {config.input_path} -> {config.output_dir}")
+    pipeline = setup_pipeline(config)
+
+    logger.info(f'Running pipeline on {config.input_path} -> {config.output_dir}')
+    process_pipeline(pipeline, config)
 
 
 if __name__ == '__main__':

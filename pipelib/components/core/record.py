@@ -30,6 +30,8 @@ class Record:
         return {
             'id': self.id,
             'cleaned': self.cleaned,
+            'anonymized': self.anonymized,
+            'html_extracted': self.html_extracted,
             # 'original': self.original,
         }
 

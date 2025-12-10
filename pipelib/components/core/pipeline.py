@@ -1,5 +1,6 @@
 import time
 import threading
+import logging
 from collections import Counter
 from typing import Iterable, Callable
 
@@ -12,6 +13,8 @@ from pipelib.components.core.step import Step
 
 
 class Pipeline:
+    logger = logging.getLogger(__name__)
+
     def __init__(self, config: PipelineConfig):
         self.config = config
         self.steps: list[Step] = []
@@ -38,19 +41,25 @@ class Pipeline:
             if line_no % 100 == 0:
                 elapsed = time.time() - start
                 time_left_seconds = (elapsed / line_no) * (self.config.input_limit - line_no)
-                time_left_minutes = int(time_left_seconds / 60) % 60
-                time_left_hours = int(time_left_seconds / 3600)
-                print(f'[progress] {line_no} rows seen')
-                print(f'[progress] Time left: {time_left_hours} hours {time_left_minutes} minutes')
+                # time_left_minutes = (time_left_seconds / 60) % 60
+                # time_left_hours = int(time_left_seconds / 3600)
+                self.logger.info('[progress] %d rows seen', line_no)
+                self.logger.info('[progress] elapsed time: %s', _duration_string(elapsed))
+                self.logger.info('[progress] estimated time left: %s', _duration_string(time_left_seconds))
+                # self.logger.info('[progress] Estimated time left: %d hours %d minutes', time_left_hours, time_left_minutes)
                 if self.config.debug_info:
                     for step_idx, step in enumerate(self.steps):
                         name = step.__class__.__name__
                         elapsed, calls, omits = self.step_call_insights[step_idx]
                         avg_time = elapsed / calls if calls else 0
                         omit_percentage = (100.0 * omits) / calls if calls else 0
-                        print(f'[debug] [insights] {name}: rate={1/avg_time:.4f} Rec/s, {omit_percentage=:.2f}%')
-                    print(f'[debug] [insights] {self.omit_reasons=}')
-                print('', end='', flush=True)
+                        self.logger.debug(
+                            '[debug] [insights] %s: rate=%.4f Rec/s, omit_percentage=%.2f%%',
+                            name,
+                            (1 / avg_time) if avg_time else 0.0,
+                            omit_percentage,
+                        )
+                    self.logger.debug('[debug] [insights] omit_reasons=%s', dict(self.omit_reasons))
         return records
 
     def _process_parallel(self, records: Iterable[Record]) -> Iterable[Record]:
@@ -90,11 +99,30 @@ class Pipeline:
         self.omit_reasons[record.omit_reason] += 1
         return None
 
+    def generate_insights(self) -> dict:
+        insights = {
+            'omit_reasons': dict(self.omit_reasons),
+            'steps': {},
+        }
+        for step_idx, step in enumerate(self.steps):
+            name = step.__class__.__name__
+            elapsed, calls, omits = self.step_call_insights[step_idx]
+            avg_time = elapsed / calls if calls else 0
+            omit_percentage = (100.0 * omits) / calls if calls else 0
+            insights['steps'][name] = {
+                'total_time_seconds': elapsed,
+                'number_of_calls': int(calls),
+                'average_time_per_call_seconds': avg_time,
+                'number_of_omits': int(omits),
+                'omit_percentage': omit_percentage,
+            }
+        return insights
+
+
     def register_step(self, GenericStep: type[Step]) -> None:
-        # print(step.__class__.__name__)
-        print(f'Initializing {GenericStep.__name__}...', end=' ')
+        self.logger.info('Initializing %s...', GenericStep.__name__)
         step = GenericStep(self.config)
-        print(f'Done')
+        self.logger.info('Initialized %s', GenericStep.__name__)
         self.steps.append(step)
 
     def register_record_write_callback(self, on_write: Callable[[Record], None]) -> None:
@@ -102,3 +130,9 @@ class Pipeline:
 
     def register_omit_callback(self, on_omit: Callable[[Record], None]) -> None:
         self.omit_callback = on_omit
+
+
+def _duration_string(seconds: float) -> str:
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return '%dh %02dm %02ds' % (hours, minutes, seconds)
