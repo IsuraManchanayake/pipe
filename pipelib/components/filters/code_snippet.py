@@ -1,7 +1,6 @@
 import re
 import unittest
 
-
 from pipelib.components.core import Filter, FilterResult
 from pipelib.components.core.record import Record
 from pipelib.components.core.settings import PipelineConfig
@@ -99,7 +98,7 @@ class CodeSnippetFilter(Filter):
         return pairs
 
     @staticmethod
-    def found_code_snippet():
+    def _found_code_snippet():
         return FilterResult.omit('code_snippet')
 
     def _filter(self, record: Record) -> FilterResult:
@@ -108,7 +107,7 @@ class CodeSnippetFilter(Filter):
 
         # Strong pattern check - immediate rejection
         if self._has_strong_code_patterns(text):
-            return CodeSnippetFilter.found_code_snippet()
+            return CodeSnippetFilter._found_code_snippet()
 
         # Analyze lines
         lines = [ln for ln in low.splitlines() if ln.strip()]
@@ -142,11 +141,11 @@ class CodeSnippetFilter(Filter):
 
         # High proportion of code-like lines (stricter threshold)
         if codey_ratio > 0.4:
-            return CodeSnippetFilter.found_code_snippet()
+            return CodeSnippetFilter._found_code_snippet()
 
         # Combined high indent + code lines
         if indent_ratio > 0.5 and codey_ratio > 0.25:
-            return CodeSnippetFilter.found_code_snippet()
+            return CodeSnippetFilter._found_code_snippet()
 
         # Character-level analysis
         code_punct_count = sum(1 for c in text if c in self.CODE_PUNCT_CHARS)
@@ -171,36 +170,29 @@ class CodeSnippetFilter(Filter):
         code_kw_hits = sum(1 for t in tokens if t in self.CODE_KEYWORDS)
         code_kw_ratio = code_kw_hits / len(tokens)
 
-        # Debug output (optional - comment out in production)
-        # print(f"Debug - stop_ratio: {stop_ratio:.3f}, code_kw_hits: {code_kw_hits}, "
-        #       f"code_kw_ratio: {code_kw_ratio:.3f}, code_punct_ratio: {code_punct_ratio:.3f}, "
-        #       f"bracket_density: {bracket_density:.3f}, codey_ratio: {codey_ratio:.3f}")
-
-        # Multi-factor heuristics (STRICTER thresholds to avoid false positives)
-
         # Natural text typically has 20-40% stopwords, so we use much lower thresholds
 
         # Very strong signal: extremely low stopwords + high code indicators
         if stop_ratio < 0.05 and code_kw_hits >= 3 and code_punct_ratio > 0.15:
-            return CodeSnippetFilter.found_code_snippet()
+            return CodeSnippetFilter._found_code_snippet()
 
         # High bracket density with very low stopwords
         if bracket_density > 3.0 and stop_ratio < 0.08:
-            return CodeSnippetFilter.found_code_snippet()
+            return CodeSnippetFilter._found_code_snippet()
 
         # High keyword concentration
         if code_kw_ratio > 0.20 and stop_ratio < 0.10:
-            return CodeSnippetFilter.found_code_snippet()
+            return CodeSnippetFilter._found_code_snippet()
 
         # Very short snippets need stricter rules
         if len(tokens) < 15:
             if code_kw_hits >= 2 and stop_ratio < 0.05 and code_punct_ratio > 0.12:
-                return CodeSnippetFilter.found_code_snippet()
+                return CodeSnippetFilter._found_code_snippet()
 
         # Longer text with moderate code signals
         if len(tokens) >= 30:
             if code_kw_hits >= 5 and code_kw_ratio > 0.15 and stop_ratio < 0.10:
-                return CodeSnippetFilter.found_code_snippet()
+                return CodeSnippetFilter._found_code_snippet()
 
         return FilterResult.keep()
 
@@ -216,8 +208,9 @@ For me this book contained the perfect blend of landscapes, culture, relationshi
         from pipelib.components.modifiers import NormalizeModifier
         from pipelib.components.modifiers import AttributeEvaluationStep
         from pipelib.components.filters import PreliminaryFilter
+        from pathlib import Path
 
-        pipeline_config = PipelineConfig(input_path='', output_dir='')
+        pipeline_config = PipelineConfig(input_path=Path(''), output_dir=Path(''))
         step_1 = NormalizeModifier(pipeline_config)
         step_2 = AttributeEvaluationStep(pipeline_config)
         step_3 = PreliminaryFilter(pipeline_config)
@@ -226,8 +219,17 @@ For me this book contained the perfect blend of landscapes, culture, relationshi
         record = step_2.process(record)
         record = step_3.process(record)
 
-        print(record.cleaned)
+        # print(record.cleaned)
 
         code_snippet = CodeSnippetFilter(pipeline_config)
         record = code_snippet.process(record)
-        self.assertEqual(record.omit, True)
+        self.assertEqual(record.omit, False)
+
+    def test_detects_function_definition(self):
+        record = Record("def greet(name):\n    return f\"Hello {name}\"", url="https://example.com")
+        from pathlib import Path
+        pipeline_config = PipelineConfig(input_path=Path(''), output_dir=Path(''))
+        code_snippet = CodeSnippetFilter(pipeline_config)
+        record = code_snippet.process(record)
+        self.assertTrue(record.omit)
+        self.assertEqual(record.omit_reason, "code_snippet")

@@ -1,5 +1,8 @@
 import re
 import logging
+import unittest
+from pathlib import Path
+from unittest import mock
 
 logging.getLogger('presidio-analyzer').setLevel(logging.ERROR)
 logging.getLogger('presidio-anonymizer').setLevel(logging.ERROR)
@@ -58,10 +61,36 @@ class PIIModifier(Modifier):
             lower = word.lower()
             return PIIModifier.PRONOUN_MAP.get(lower, word)
 
-        record.cleaned = PIIModifier.PRONOUN_RE.sub(repl, record.cleaned)
+        updated_text, n = PIIModifier.PRONOUN_RE.subn(repl, record.cleaned)
+        if n > 0:
+            record.cleaned = updated_text
+            record.anonymized = True
 
 
-# Attempt downloading from a single thread code start
+class TestPIIModifier(unittest.TestCase):
+    def test_neutralize_pronouns(self):
+        record = Record("He told her it was his.", url="https://example.com")
+        PIIModifier.neutralize_pronouns(record)
+
+        self.assertTrue(record.anonymized)
+        self.assertEqual(record.cleaned, "<HE/SHE> told <HIS/HER> it was <HIS/HER>.")
+
+    def test_anonimize_sets_anonymized(self):
+        config = PipelineConfig(input_path=Path(''), output_dir=Path(''))
+        modifier = PIIModifier(config)
+        record = Record("John Doe email john@example.com", url="https://example.com")
+
+        modifier.anonimize(record)
+
+        self.assertTrue(record.anonymized)
+        self.assertIn('<PERSON>', record.cleaned)
+        self.assertIn('<EMAIL_ADDRESS>', record.cleaned)
+        self.assertNotIn('John Doe', record.cleaned)
+        self.assertNotIn('john@example.com', record.cleaned)
+        self.assertNotIn('<PHONE_NUMBER>', record.cleaned)
+
+
+# Attempt downloading models in a cold start
 _temp_analyzer_engine = AnalyzerEngine()
 _temp_anonymizer = AnonymizerEngine()
 _temp_analyzer_results = _temp_analyzer_engine.analyze(

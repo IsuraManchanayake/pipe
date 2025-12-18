@@ -1,6 +1,8 @@
 import re
 from html.parser import HTMLParser
 from typing import List, Set
+import unittest
+from pathlib import Path
 
 from pipelib.components.core import Modifier
 from pipelib.components.core.record import Record
@@ -64,13 +66,13 @@ class HTMLExtractorModifier(Modifier):
             clean_text = self._post_process(clean_text)
 
             # Only update if we got meaningful content
-            if clean_text and len(clean_text.strip()) > 50:
+            if clean_text and len(clean_text.strip()) >= self.config.min_char_len:
                 record.cleaned = clean_text
                 record.html_extracted = True
         except Exception as e:
             # If parsing fails, leave the record unchanged
             # Could log this: print(f"HTML parsing failed: {e}")
-            pass
+            record.cleaned = text
 
     @staticmethod
     def _is_html(text: str) -> bool:
@@ -256,55 +258,83 @@ class CleanHTMLParser(HTMLParser):
         return False
 
 
-# Example usage and test
-if __name__ == '__main__':
-    from unittest.mock import MagicMock
+class TestHTMLExtractorModifier(unittest.TestCase):
+    def test_extracts_content_and_skips_noise(self):
+        html = (
+            "<html><body>"
+            "<nav>Menu</nav>"
+            "<p>Hello <a href=\"#\">world</a>!</p>"
+            "<div class=\"ad\">Buy now</div>"
+            "</body></html>"
+        )
+        record = Record(html, url="https://example.com")
+        modifier = HTMLExtractorModifier(PipelineConfig(input_path=Path(''), output_dir=Path(''), min_char_len=1))
+        modifier.process(record)
 
-    # Test HTML
-    test_html = """
-    <p>Ubuntu 9.10</p>
+        self.assertTrue(record.html_extracted)
+        self.assertIn("Hello", record.cleaned)
+        self.assertIn("world", record.cleaned)
+        self.assertNotIn("Menu", record.cleaned)
+        self.assertNotIn("Buy now", record.cleaned)
 
-<p>Silly question time: When the clamav-freshclam service is running, how often is clamav checking for updates? Or do I have to manually run freshclam via a cronjob? </p>
+    def test_skips_non_html_input(self):
+        record = Record("Just plain text", url="https://example.com")
+        modifier = HTMLExtractorModifier(PipelineConfig(input_path=Path(''), output_dir=Path(''), min_char_len=1))
+        modifier.process(record)
 
-<blockquote>
-<p>how often is clamav checking for updates?</p>
-</blockquote>
-<p>Unless you setup a cronjob it will not check for updates.</p>
-<blockquote>
-<p>Do I have to manually run freshclam via a cronjob?</p>
-</blockquote>
-<p>The purpose of a cronjob is to automate the process. You can decide to run it in the following:</p>
-<pre><code>/etc/cron.daily
-/etc/cron.hourly
-/etc/cron.weekly
-/etc/cron.monthly 
-</code></pre>
-<p>I recommend <strong>cron.daily</strong> and set it up via a shell script.</p>
-<pre><code>sudo gedit /etc/cron.daily/freshclam.sh
-</code></pre>
-<p>add the lines:</p>
-<pre><code>#!/bin/sh
-/usr/bin/freshclam --quiet
-</code></pre>
-<p>This will now run with all your other cron.daily jobs</p>
-<p>Save and exit</p>
-<pre><code>sudo chmod 755 /etc/cron.daily/freshclam.sh
-</code></pre>
+        self.assertFalse(record.html_extracted)
+        self.assertEqual(record.cleaned, "Just plain text")
 
-    """
-
-    # Create modifier
-    config = MagicMock()
-    modifier = HTMLExtractorModifier(config)
-
-    # Create record
-    record = Record('', '')
-    record.cleaned = test_html
-
-    # Apply modifier
-    modifier._modify(record)
-
-    print("Extracted text:")
-    print("=" * 50)
-    print(record.cleaned)
-    print("=" * 50)
+#
+# # Example usage and test
+# if __name__ == '__main__':
+#     from unittest.mock import MagicMock
+#
+#     # Test HTML
+#     test_html = """
+#     <p>Ubuntu 9.10</p>
+#
+# <p>Silly question time: When the clamav-freshclam service is running, how often is clamav checking for updates? Or do I have to manually run freshclam via a cronjob? </p>
+#
+# <blockquote>
+# <p>how often is clamav checking for updates?</p>
+# </blockquote>
+# <p>Unless you setup a cronjob it will not check for updates.</p>
+# <blockquote>
+# <p>Do I have to manually run freshclam via a cronjob?</p>
+# </blockquote>
+# <p>The purpose of a cronjob is to automate the process. You can decide to run it in the following:</p>
+# <pre><code>/etc/cron.daily
+# /etc/cron.hourly
+# /etc/cron.weekly
+# /etc/cron.monthly
+# </code></pre>
+# <p>I recommend <strong>cron.daily</strong> and set it up via a shell script.</p>
+# <pre><code>sudo gedit /etc/cron.daily/freshclam.sh
+# </code></pre>
+# <p>add the lines:</p>
+# <pre><code>#!/bin/sh
+# /usr/bin/freshclam --quiet
+# </code></pre>
+# <p>This will now run with all your other cron.daily jobs</p>
+# <p>Save and exit</p>
+# <pre><code>sudo chmod 755 /etc/cron.daily/freshclam.sh
+# </code></pre>
+#
+#     """
+#
+#     # Create modifier
+#     config = MagicMock()
+#     modifier = HTMLExtractorModifier(config)
+#
+#     # Create record
+#     record = Record('', '')
+#     record.cleaned = test_html
+#
+#     # Apply modifier
+#     modifier._modify(record)
+#
+#     print("Extracted text:")
+#     print("=" * 50)
+#     print(record.cleaned)
+#     print("=" * 50)
