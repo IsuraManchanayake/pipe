@@ -80,6 +80,14 @@ docker build -t mainpipe .
 docker run --rm -v "$PWD/outputs:/app/outputs" mainpipe
 ```
 
+### Run Tests
+
+Run tests with Python's `unittest`.
+
+```bash
+python -m unittest discover -s pipelib/components -p "*.py"
+```
+
 ## Pipeline Architecture
 
 Mainpipe implements a nine-stage processing pipeline:
