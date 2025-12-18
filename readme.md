@@ -85,7 +85,7 @@ docker run --rm -v "$PWD/outputs:/app/outputs" mainpipe
 Run tests with Python's `unittest`.
 
 ```bash
-python -m unittest discover -s pipelib/components -p "*.py"
+python -m unittest discover -s tests -p "*.py"
 ```
 
 ## Pipeline Architecture
