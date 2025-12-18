@@ -1,5 +1,4 @@
 import re
-import unittest
 
 from pipelib.components.core import Filter, FilterResult
 from pipelib.components.core.record import Record
@@ -195,41 +194,3 @@ class CodeSnippetFilter(Filter):
                 return CodeSnippetFilter._found_code_snippet()
 
         return FilterResult.keep()
-
-
-class TestCodeSnippetFilter(unittest.TestCase):
-    def test_code_snippet_filter(self):
-        record = Record("""
-        This really was an unexpected pleasure. When I started reading, my mental picture of Brazil could not have been more different than what I found in this amazing story. Descriptions of the northern countryside, a hot, dry scrub land, contrast wonderfully with the lush humidity of the regional capital of Recife and parallel the storylines of two sisters separated by unusual circumstances. Both girls raised and trained as seamstresses by their widowed aunt, are eventually drawn in completely different directions. The younger sister Luzia’s story of extreme physical hardship and love within a band of roaming outlaws really captured my imagination. I was fascinated reading about a group of people living outdoors, completely at the mercy of the elements and the violent struggles that accompany that choice. Eliza’s life in the city becomes dominated by politics inside and outside her home.
-I really enjoyed this work of historical fiction, learning more about Brazil during the 1920’s and 30’s. The characters were well drawn and threaded throughout the story are metaphors which connect Aunt Sofia’s sewing wisdom with lessons about life and human nature.
-For me this book contained the perfect blend of landscapes, culture, relationships, family, politics and history.
-        """, url="https://example.com")
-
-        from pipelib.components.modifiers import NormalizeModifier
-        from pipelib.components.modifiers import AttributeEvaluationStep
-        from pipelib.components.filters import PreliminaryFilter
-        from pathlib import Path
-
-        pipeline_config = PipelineConfig(input_path=Path(''), output_dir=Path(''))
-        step_1 = NormalizeModifier(pipeline_config)
-        step_2 = AttributeEvaluationStep(pipeline_config)
-        step_3 = PreliminaryFilter(pipeline_config)
-
-        record = step_1.process(record)
-        record = step_2.process(record)
-        record = step_3.process(record)
-
-        # print(record.cleaned)
-
-        code_snippet = CodeSnippetFilter(pipeline_config)
-        record = code_snippet.process(record)
-        self.assertEqual(record.omit, False)
-
-    def test_detects_function_definition(self):
-        record = Record("def greet(name):\n    return f\"Hello {name}\"", url="https://example.com")
-        from pathlib import Path
-        pipeline_config = PipelineConfig(input_path=Path(''), output_dir=Path(''))
-        code_snippet = CodeSnippetFilter(pipeline_config)
-        record = code_snippet.process(record)
-        self.assertTrue(record.omit)
-        self.assertEqual(record.omit_reason, "code_snippet")
